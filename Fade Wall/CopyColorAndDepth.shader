@@ -34,8 +34,8 @@ Shader "Hidden/CopyColorAndDepth"
 
 	float _Opacity;
 	float _YThreshold = 0.35f;
-	float3 _InvisColor;
-	float _MinEdgeAlpha = 0.23f;
+	float4 _FillColor;
+	float _MinSEColorAlpha = 0.23f;
 
 
     void FullScreenPass(Varyings varyings, out float4 Color : SV_Target, out float Depth : SV_Depth)
@@ -51,10 +51,10 @@ Shader "Hidden/CopyColorAndDepth"
 #ifdef SHOW_HALF
 		if (posInput.positionNDC.y > _YThreshold)
 		{
-			inputColor.a = max(_MinEdgeAlpha, inputColor.a * _Opacity);
-			float lerpVal = (1 - inputColor.a);
+			inputColor.a = max(_MinSEColorAlpha, inputColor.a * _Opacity);
+			float lerpVal = (1 - _Opacity);
 			lerpVal *= lerpVal;
-			inputColor.rgb = lerp(inputColor.rgb, max(_InvisColor, inputColor.rgb), lerpVal);
+			inputColor = lerp(inputColor, max(_FillColor, inputColor), lerpVal);
 		}
 #else
 		inputColor.a *= _Opacity;

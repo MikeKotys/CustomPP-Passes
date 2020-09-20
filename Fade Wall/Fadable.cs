@@ -9,30 +9,32 @@ using UnityEditor;
 
 namespace FadeableWall
 {
+	/// <summary>Put this on a model to make it disapear when the camera's collider hits the model's collider.</summary>
 	public class Fadable : MonoBehaviour
 	{
-#if UNITY_EDITOR
-		[Layer]
-#endif
-		public int NonHiddenLayer = 0;
+		[Header("This will create cloned MeshRenderers", order = 0)]
+		[Header("with 'ShadowsOnly' to render shadows", order = 1)]
+		[Header("all the time regardless of the fading.", order = 2)]
 
-		[Tooltip("Should the walls of the object be shown after it was hidden?")]
+		[Tooltip("Should the walls of the object be shown after it was hidden?" +
+			" Also ensures that some parts of the model are always shown (below the Y line).")]
 		public bool ShowWallEdges = false;
 
+		[Tooltip("Which trigger colliders shoult trigger the hiding effect?")]
 		public Transform[] TriggerCollisions;
 
+		/// <summary>How many trigger colliders collided with the camera collider.</summary>
 		int CollisionCount = 0;
 
+		/// <summary>All renderers eligable to be faded.</summary>
 		Renderer[] AllFadableRenderers;
 
-		static int FadingLayer;
-		static int FadingLayerEdges;
+		/// <summary>Which layer should the model be on</summary>
+		[HideInInspector]
+		public int OriginalLayer = 0;
 
 		void Awake()
 		{//#colreg(darkorange);
-			FadingLayer = LayerMask.NameToLayer("FadeWall");
-			FadingLayerEdges = LayerMask.NameToLayer("FWShowEdges");
-
 			List<Renderer> renderers = new List<Renderer>();
 
 			// First - save all renderers we have.
@@ -137,7 +139,7 @@ namespace FadeableWall
 				}
 #endif
 				// Set the initial state of the renderer - put it on a layer, drawn by the camera.
-				renderer.gameObject.layer = NonHiddenLayer;
+				renderer.gameObject.layer = OriginalLayer;
 
 				renderer.shadowCastingMode = ShadowCastingMode.Off;
 
@@ -179,10 +181,13 @@ namespace FadeableWall
 			}
 		}//#endcolreg
 
+		/// <summary>Prevent multiple <see cref="QueueForFadeWall"/> coroutines running at the same time.</summary>
 		bool IsInQueue = false;
 
+		/// <summary>Waits till the FadeWall custom pass frees up and uses it monopilisticly to
+		///		hide the models this class is responsible for.</summary>
 		IEnumerator QueueForFadeWall()
-		{//#colreg(darkred);
+		{//#colreg(blue*1.5);
 			IsInQueue = true;
 			while (true)
 			{
@@ -190,7 +195,8 @@ namespace FadeableWall
 					break;
 				else
 				{
-					if (FadeWall.Instance.IsBusy)
+					if ((ShowWallEdges && FadeWall.Instance.IsBusySE)
+						|| (!ShowWallEdges && FadeWall.Instance.IsBusyFW))
 						yield return null;
 					else
 					{
@@ -202,24 +208,19 @@ namespace FadeableWall
 							break;
 						else
 						{
-							FadeWall.Instance.GainMonopolisticControl(this, isFadingOut ? 1 : 0);
-
-							if (isFadingOut)
-							{
-								for (int i = 0; i < AllFadableRenderers.Length; i++)
-								{
-									if (ShowWallEdges)
-										AllFadableRenderers[i].gameObject.layer = FadeWall.Instance.ShowEdgesLayer;
-									else
-										AllFadableRenderers[i].gameObject.layer = FadeWall.Instance.FadeWallLayer;
-								}
-							}
+							if (ShowWallEdges)
+								FadeWall.Instance.GainMonopolisticControlSE(this, isFadingOut ? 1 : 0);
 							else
+								FadeWall.Instance.GainMonopolisticControlFW(this, isFadingOut ? 1 : 0);
+
+							for (int i = 0; i < AllFadableRenderers.Length; i++)
 							{
-								if (!ShowWallEdges)
+								if (ShowWallEdges)
+									AllFadableRenderers[i].gameObject.layer = FadeWall.Instance.ShowEdgesLayer;
+								else
 								{
-									for (int i = 0; i < AllFadableRenderers.Length; i++)
-										AllFadableRenderers[i].enabled = true;
+									AllFadableRenderers[i].enabled = true;
+									AllFadableRenderers[i].gameObject.layer = FadeWall.Instance.FadeWallLayer;
 								}
 							}
 
@@ -234,10 +235,12 @@ namespace FadeableWall
 			IsInQueue = false;
 		}//#endcolreg
 
+		/// <summary>Prevent multiple <see cref="GradualyChangeOpacity"/> coroutines running at the same time.</summary>
 		bool IsChangingOpacity = false;
 
+		/// <summary>Slowly change the opacity to fade in/out the models.</summary>
 		IEnumerator GradualyChangeOpacity()
-		{//#colreg(darkblue);
+		{//#colreg(blue*1.5);
 			IsChangingOpacity = true;
 			while (true)
 			{
@@ -245,22 +248,30 @@ namespace FadeableWall
 					break;
 				else
 				{
-					if (FadeWall.Instance.ChangeOpacity(CollisionCount == 0))
+					if ((ShowWallEdges && FadeWall.Instance.ChangeOpacitySE(CollisionCount == 0))
+						|| (!ShowWallEdges && FadeWall.Instance.ChangeOpacityFW(CollisionCount == 0)))
 					{
-						FadeWall.Instance.ReleaseMonopolisticControl(this);
+						if (ShowWallEdges)
+							FadeWall.Instance.ReleaseMonopolisticControlSE(this);
+						else
+							FadeWall.Instance.ReleaseMonopolisticControlFW(this);
 
 						if (CollisionCount > 0)
 						{
-							if (!ShowWallEdges)
+							// Fully faded OUT.
+							for (int i = 0; i < AllFadableRenderers.Length; i++)
 							{
-								for (int i = 0; i < AllFadableRenderers.Length; i++)
+								if (ShowWallEdges)
+									AllFadableRenderers[i].gameObject.layer = FadeWall.Instance.ShowEdgesFrozenLayer;
+								else
 									AllFadableRenderers[i].enabled = false;
 							}
 						}
 						else
 						{
+							// Fully faded IN.
 							for (int i = 0; i < AllFadableRenderers.Length; i++)
-								AllFadableRenderers[i].gameObject.layer = NonHiddenLayer;
+								AllFadableRenderers[i].gameObject.layer = OriginalLayer;
 						}
 
 						break;
@@ -274,6 +285,7 @@ namespace FadeableWall
 	}
 
 #if UNITY_EDITOR
+	/// <summary>Allows to pick the layer mask for a custom variable the same way as the layer picker dropdown in Unity.</summary>
 	[CustomPropertyDrawer(typeof(LayerAttribute))]
 	public class LayerAttributeEditor : PropertyDrawer
 	{
@@ -296,6 +308,7 @@ namespace FadeableWall
 		}
 	}
 
+	/// <summary>Allows to pick the layer mask for a custom variable the same way as the layer picker dropdown in Unity.</summary>
 	public class LayerAttribute : PropertyAttribute
 	{
 	}

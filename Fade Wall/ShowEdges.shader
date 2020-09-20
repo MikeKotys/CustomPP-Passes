@@ -34,7 +34,7 @@
 
 	TEXTURE2D_X(_DepthBuffer);
     float _EdgeDetectThreshold;
-	float3 _GlowColor;
+	float3 _EdgeColor;
     float _EdgeRadius;
 	
     //float SampleClampedDepth(float2 uv) { return SampleCameraDepth(clamp(uv, _ScreenSize.zw, 1 - _ScreenSize.zw)).r; }
@@ -99,7 +99,7 @@
         PositionInputs posInput = GetPositionInput(varyings.positionCS.xy, _ScreenSize.zw, depth, UNITY_MATRIX_I_VP, UNITY_MATRIX_V);
 		float2 uv = posInput.positionNDC.xy * _RTHandleScale.xy;
 
-		float3 edgeDetectColor = EdgeDetect(uv, 2, 1) * _GlowColor;
+		float3 edgeDetectColor = EdgeDetect(uv, 2, 1) * _EdgeColor;
 
         // Remove the edge detect effect between the sky and objects when the object is inside the sphere
         edgeDetectColor *= depth != UNITY_RAW_FAR_CLIP_VALUE;
