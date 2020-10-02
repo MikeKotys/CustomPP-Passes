@@ -155,7 +155,7 @@ MonoBehaviour:
   m_RenderingPathDefaultCameraFrameSettings:
     bitDatas:
       data1: 70297877217117
-      data2: 4539628425463136256
+      data2: 4539628425429581824
     lodBias: 1
     lodBiasMode: 0
     lodBiasQualityLevel: 0
@@ -346,7 +346,10 @@ MonoBehaviour:
   - {fileID: 11400000, guid: 26bdddf49760c61438938733f07fa2a2, type: 2}
   - {fileID: 11400000, guid: 78322c7f82657514ebe48203160e3f39, type: 2}
   beforeTransparentCustomPostProcesses: []
-  beforePostProcessCustomPostProcesses: []
+  beforePostProcessCustomPostProcesses:
+  - MCGPostEffect.MCGPostEffect, Assembly-CSharp, Version=0.0.0.0, Culture=neutral,
+    PublicKeyToken=null
   afterPostProcessCustomPostProcesses:
   - ZSuppressionBlur.ZSuppressionBlur, Assembly-CSharp, Version=0.0.0.0, Culture=neutral,
     PublicKeyToken=null
+  - ZSharpenHDR.ZSharpenHDR, Assembly-CSharp, Version=0.0.0.0, Culture=neutral, PublicKeyToken=null

@@ -1,63 +1,63 @@
 using UnityEngine;
-
 using UnityEngine.Rendering;
-
 using UnityEngine.Rendering.HighDefinition;
-
 using System;
 
-[Serializable, VolumeComponentMenu("Post-processing/Custom/ZSharpenHDR")]
-public sealed class ZSharpenHDR : CustomPostProcessVolumeComponent, IPostProcessComponent
+namespace ZSharpenHDR
 {
-	[Tooltip("Controls the intensity of the effect.")]
-	public ClampedFloatParameter SharpenAmmount = new ClampedFloatParameter(0.5f, 0f, 15f);
-
-	Material CopyMaterial;
-	Material SharpenMaterial;
-
-	public bool IsActive() => SharpenMaterial != null && SharpenAmmount.value > 0f && CopyMaterial != null;
-
-	public override CustomPostProcessInjectionPoint injectionPoint => CustomPostProcessInjectionPoint.BeforePostProcess;
-
-	RTHandle BlurredRT;
-    MaterialPropertyBlock Properties;
-	public override void Setup()
+	[Serializable, VolumeComponentMenu("Post-processing/Custom/ZSharpenHDR")]
+	public sealed class ZSharpenHDR : CustomPostProcessVolumeComponent, IPostProcessComponent
 	{
-		var shader = Shader.Find("Hidden/Shader/ZCopy");
-		if (shader != null)
-			CopyMaterial = new Material(shader);
+		[Tooltip("Controls the intensity of the effect.")]
+		public ClampedFloatParameter SharpenAmmount = new ClampedFloatParameter(1.0f, 0f, 15f);
 
-		shader = Shader.Find("Hidden/Shader/ZSharpenHDR");
-		if (shader != null)
-			SharpenMaterial = new Material(shader);
+		Material CopyMaterial;
+		Material SharpenMaterial;
 
-		Properties = new MaterialPropertyBlock();
-	}
+		public bool IsActive() => SharpenMaterial != null && SharpenAmmount.value > 0f && CopyMaterial != null;
 
-	public override void Render(CommandBuffer cmd, HDCamera camera, RTHandle source, RTHandle destination)
-	{
-		if (SharpenMaterial != null && CopyMaterial != null)
+		public override CustomPostProcessInjectionPoint injectionPoint => CustomPostProcessInjectionPoint.AfterPostProcess;
+
+		RTHandle BlurredRT;
+		MaterialPropertyBlock Properties;
+		public override void Setup()
 		{
-			if (BlurredRT == null)
-				BlurredRT = RTHandles.Alloc((int)((float)source.rt.width*.5f), (int)((float)source.rt.height * .5f),
-					colorFormat: source.rt.graphicsFormat);
+			var shader = Shader.Find("Hidden/Shader/ZCopy");
+			if (shader != null)
+				CopyMaterial = new Material(shader);
 
-			Properties.SetTexture("_InputTexture", source);
-			HDUtils.DrawFullScreen(cmd, CopyMaterial, BlurredRT, Properties);
-			Properties.SetTexture("_BlurredTex", BlurredRT);
-			Properties.SetFloat("_SharpenAmount", SharpenAmmount.value);
-			HDUtils.DrawFullScreen(cmd, SharpenMaterial, destination, Properties);
-			//SharpenMaterial.SetFloat("_SharpenAmount", SharpenAmmount.value);
-			//SharpenMaterial.SetTexture("_SharpenAmount", source);
-			//HDUtils.DrawFullScreen(cmd, SharpenMaterial, destination);
+			shader = Shader.Find("Hidden/Shader/ZSharpenHDR");
+			if (shader != null)
+				SharpenMaterial = new Material(shader);
+
+			Properties = new MaterialPropertyBlock();
 		}
-	}
 
-	public override void Cleanup()
-	{
-		CoreUtils.Destroy(CopyMaterial);
-		CoreUtils.Destroy(SharpenMaterial);
-		RTHandles.Release(BlurredRT);
-	}
+		public override void Render(CommandBuffer cmd, HDCamera camera, RTHandle source, RTHandle destination)
+		{
+			if (SharpenMaterial != null && CopyMaterial != null)
+			{
+				if (BlurredRT == null)
+					BlurredRT = RTHandles.Alloc((int)((float)source.rt.width * .5f), (int)((float)source.rt.height * .5f),
+						colorFormat: source.rt.graphicsFormat);
 
+				Properties.SetTexture("_InputTexture", source);
+				HDUtils.DrawFullScreen(cmd, CopyMaterial, BlurredRT, Properties);
+				Properties.SetTexture("_BlurredTex", BlurredRT);
+				Properties.SetFloat("_SharpenAmount", SharpenAmmount.value);
+				HDUtils.DrawFullScreen(cmd, SharpenMaterial, destination, Properties);
+				//SharpenMaterial.SetFloat("_SharpenAmount", SharpenAmmount.value);
+				//SharpenMaterial.SetTexture("_SharpenAmount", source);
+				//HDUtils.DrawFullScreen(cmd, SharpenMaterial, destination);
+			}
+		}
+
+		public override void Cleanup()
+		{
+			CoreUtils.Destroy(CopyMaterial);
+			CoreUtils.Destroy(SharpenMaterial);
+			RTHandles.Release(BlurredRT);
+		}
+
+	}
 }

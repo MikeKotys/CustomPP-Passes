@@ -52,7 +52,7 @@ Shader "Hidden/CopyColorAndDepth"
 		if (posInput.positionNDC.y > _YThreshold)
 		{
 			inputColor.a = max(_MinSEColorAlpha, inputColor.a * _Opacity);
-			float lerpVal = (1 - _Opacity);
+			float lerpVal = (1 - inputColor.a);
 			lerpVal *= lerpVal;
 			inputColor = lerp(inputColor, max(_FillColor, inputColor), lerpVal);
 		}

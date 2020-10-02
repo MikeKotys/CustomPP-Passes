@@ -144,7 +144,7 @@ namespace FadeableWall
 				colorFormat: GraphicsFormat.R16G16B16A16_SFloat, useDynamicScale: true, name: "Fade Wall Color Buffer");
 
 			DepthBuffer = RTHandles.Alloc(
-				Vector2.one, TextureXR.slices, depthBufferBits: DepthBits.Depth16, dimension: TextureXR.dimension,
+				Vector2.one, TextureXR.slices, depthBufferBits: DepthBits.Depth24, dimension: TextureXR.dimension,
 				colorFormat: GraphicsFormat.R16_UInt, useDynamicScale: true, name: "Fade Wall Depth Buffer");
 
 			name = "Fade Walls";
@@ -347,7 +347,7 @@ namespace FadeableWall
 
 			if (increase)
 			{
-				ShowEdgesOpacity += Time.deltaTime * 4;
+				ShowEdgesOpacity += Time.deltaTime * 6;
 
 				if (ShowEdgesOpacity >= 1)
 				{
@@ -357,7 +357,7 @@ namespace FadeableWall
 			}
 			else
 			{
-				ShowEdgesOpacity -= Time.deltaTime * 4;
+				ShowEdgesOpacity -= Time.deltaTime * 6;
 
 				if (ShowEdgesOpacity <= 0)
 				{
@@ -379,7 +379,7 @@ namespace FadeableWall
 
 			if (increase)
 			{
-				FadeWallOpacity += Time.deltaTime * 4;
+				FadeWallOpacity += Time.deltaTime * 6;
 
 				if (FadeWallOpacity >= 1)
 				{
@@ -389,7 +389,7 @@ namespace FadeableWall
 			}
 			else
 			{
-				FadeWallOpacity -= Time.deltaTime * 4;
+				FadeWallOpacity -= Time.deltaTime * 6;
 
 				if (FadeWallOpacity <= 0)
 				{
