@@ -66,7 +66,7 @@ Shader "MCG/Unlit"
 				PositionInputs posInput = GetPositionInput(input.positionSS.xy, _ScreenSize.zw, input.positionSS.z, input.positionSS.w, input.positionRWS);
 
 				float2 unlitColorMapUv = TRANSFORM_TEX(input.texCoord0.xy, _UnlitColorMap);
-				color0 = SAMPLE_TEXTURE2D(_UnlitColorMap, sampler_UnlitColorMap, unlitColorMapUv) * _UnlitColor;
+				color0 = SAMPLE_TEXTURE2D(_UnlitColorMap, sampler_UnlitColorMap, unlitColorMapUv).r * _UnlitColor;
 
 				color0 = min(1, color0 * AttenuationMultiplier);
 				color1 = color0 * ColorMask1;

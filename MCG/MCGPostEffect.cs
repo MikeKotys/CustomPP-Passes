@@ -2,6 +2,7 @@ using UnityEngine;
 using UnityEngine.Rendering;
 using UnityEngine.Rendering.HighDefinition;
 using System;
+using UnityEngine.Experimental.Rendering;
 
 namespace MCGPostEffect
 {
@@ -47,12 +48,12 @@ namespace MCGPostEffect
 		{//#colreg(darkpurple);
 			if (Attenuation1RT == null)
 			{
-				Attenuation1RT = RTHandles.Alloc(source.rt.width, source.rt.height, colorFormat: source.rt.graphicsFormat);
+				Attenuation1RT = RTHandles.Alloc(source.rt.width, source.rt.height, colorFormat: GraphicsFormat.R8G8B8A8_SRGB);
 				Attenuation1RT.rt.name = "MCG Attenuation buffer 1";
 			}
 			if (Attenuation2RT == null)
 			{
-				Attenuation2RT = RTHandles.Alloc(source.rt.width, source.rt.height, colorFormat: source.rt.graphicsFormat);
+				Attenuation2RT = RTHandles.Alloc(source.rt.width, source.rt.height, colorFormat: GraphicsFormat.R8G8B8A8_SRGB);
 				Attenuation2RT.rt.name = "MCG Attenuation buffer 2";
 			}
 
@@ -74,6 +75,15 @@ namespace MCGPostEffect
 			MCGPPMat.DisableKeyword("LUT_SIX_LUMA");
 			MCGPPMat.DisableKeyword("LUT_SEVEN_LUMA");
 
+			MCGPPMat.DisableKeyword("LUT_ZERO_COLOR");
+			MCGPPMat.DisableKeyword("LUT_ONE_COLOR");
+			MCGPPMat.DisableKeyword("LUT_TWO_COLOR");
+			MCGPPMat.DisableKeyword("LUT_THREE_COLOR");
+			MCGPPMat.DisableKeyword("LUT_FOUR_COLOR");
+			MCGPPMat.DisableKeyword("LUT_FIVE_COLOR");
+			MCGPPMat.DisableKeyword("LUT_SIX_COLOR");
+			MCGPPMat.DisableKeyword("LUT_SEVEN_COLOR");
+
 			// Render a series of meshes of each LUT slot we have occupied.
 			for (int i = 0; i < MCGSystem.SortedLCGs.Length; i++)
 			{
@@ -81,6 +91,7 @@ namespace MCGPostEffect
 				var lcgMesh = MCGSystem.SortedLCGs[i];
 				bool ignoreThisLCG = false;
 				bool isSubtractingLuma = false;
+				bool usesTargetColor = false;
 				if (lcgMesh != null)
 				{
 					if (!lcgMesh.isActiveAndEnabled)
@@ -89,6 +100,8 @@ namespace MCGPostEffect
 					{
 						if (lcgMesh.SubtractLuminosity)
 							isSubtractingLuma = true;
+						if (lcgMesh.UseTargetColor)
+							usesTargetColor = true;
 					}
 
 					priority = lcgMesh.Priority;
@@ -122,6 +135,26 @@ namespace MCGPostEffect
 							MCGPPMat.EnableKeyword("LUT_SIX_LUMA");
 						else if (CurrentLUTNum == 7)
 							MCGPPMat.EnableKeyword("LUT_SEVEN_LUMA");
+					}
+
+					if (usesTargetColor)
+					{
+						if (CurrentLUTNum == 0)
+							MCGPPMat.EnableKeyword("LUT_ZERO_COLOR");
+						if (CurrentLUTNum == 1)
+							MCGPPMat.EnableKeyword("LUT_ONE_COLOR");
+						else if (CurrentLUTNum == 2)
+							MCGPPMat.EnableKeyword("LUT_TWO_COLOR");
+						else if (CurrentLUTNum == 3)
+							MCGPPMat.EnableKeyword("LUT_THREE_COLOR");
+						else if (CurrentLUTNum == 4)
+							MCGPPMat.EnableKeyword("LUT_FOUR_COLOR");
+						else if (CurrentLUTNum == 5)
+							MCGPPMat.EnableKeyword("LUT_FIVE_COLOR");
+						else if (CurrentLUTNum == 6)
+							MCGPPMat.EnableKeyword("LUT_SIX_COLOR");
+						else if (CurrentLUTNum == 7)
+							MCGPPMat.EnableKeyword("LUT_SEVEN_COLOR");
 					}
 
 					lastPriority = priority;

@@ -8,20 +8,28 @@ Shader "Hidden/MCG_PostProcess"
 	#include "Packages/com.unity.render-pipelines.high-definition/Runtime/ShaderLibrary/ShaderVariables.hlsl"
 
 	#pragma multi_compile ___ LUT_ZERO_LUMA
+	#pragma multi_compile ___ LUT_ZERO_COLOR
 	#pragma multi_compile ___ LUT_ONE
 	#pragma multi_compile ___ LUT_ONE_LUMA
+	#pragma multi_compile ___ LUT_ONE_COLOR
 	#pragma multi_compile ___ LUT_TWO
 	#pragma multi_compile ___ LUT_TWO_LUMA
+	#pragma multi_compile ___ LUT_TWO_COLOR
 	#pragma multi_compile ___ LUT_THREE
 	#pragma multi_compile ___ LUT_THREE_LUMA
+	#pragma multi_compile ___ LUT_THREE_COLOR
 	#pragma multi_compile ___ LUT_FOUR
 	#pragma multi_compile ___ LUT_FOUR_LUMA
+	#pragma multi_compile ___ LUT_FOUR_COLOR
 	#pragma multi_compile ___ LUT_FIVE
 	#pragma multi_compile ___ LUT_FIVE_LUMA
+	#pragma multi_compile ___ LUT_FIVE_COLOR
 	#pragma multi_compile ___ LUT_SIX
 	#pragma multi_compile ___ LUT_SIX_LUMA
+	#pragma multi_compile ___ LUT_SIX_COLOR
 	#pragma multi_compile ___ LUT_SEVEN
 	#pragma multi_compile ___ LUT_SEVEN_LUMA
+	#pragma multi_compile ___ LUT_SEVEN_COLOR
 	#pragma multi_compile ___ LUT_DEFAULT
 	#pragma multi_compile ___ VISION_CONES_ENABLED
 
@@ -60,48 +68,56 @@ Shader "Hidden/MCG_PostProcess"
 	float _LUT_Offset0;
 	float _LUT_Strength0;
 	float LUMA_Sensitivity0;
+	float3 TargetColor0;
 
 	sampler3D _LUT3D1;
 	float _LUT_Scale1;
 	float _LUT_Offset1;
 	float _LUT_Strength1;
 	float LUMA_Sensitivity1;
+	float3 TargetColor1;
 
 	sampler3D _LUT3D2;
 	float _LUT_Scale2;
 	float _LUT_Offset2;
 	float _LUT_Strength2;
 	float LUMA_Sensitivity2;
+	float3 TargetColor2;
 
 	sampler3D _LUT3D3;
 	float _LUT_Scale3;
 	float _LUT_Offset3;
 	float _LUT_Strength3;
 	float LUMA_Sensitivity3;
+	float3 TargetColor3;
 
 	sampler3D _LUT3D4;
 	float _LUT_Scale4;
 	float _LUT_Offset4;
 	float _LUT_Strength4;
 	float LUMA_Sensitivity4;
+	float3 TargetColor4;
 
 	sampler3D _LUT3D5;
 	float _LUT_Scale5;
 	float _LUT_Offset5;
 	float _LUT_Strength5;
 	float LUMA_Sensitivity5;
+	float3 TargetColor5;
 
 	sampler3D _LUT3D6;
 	float _LUT_Scale6;
 	float _LUT_Offset6;
 	float _LUT_Strength6;
 	float LUMA_Sensitivity6;
+	float3 TargetColor6;
 
 	sampler3D _LUT3D7;
 	float _LUT_Scale7;
 	float _LUT_Offset7;
 	float _LUT_Strength7;
 	float LUMA_Sensitivity7;
+	float3 TargetColor7;
 
 	sampler3D _LUT3DVISION;
 	float _LUT_ScaleVISION;
@@ -133,6 +149,9 @@ Shader "Hidden/MCG_PostProcess"
 #ifdef LUT_ZERO_LUMA
 		atten.r = saturate(atten.r - luma * LUMA_Sensitivity0);
 #endif
+#ifdef LUT_ZERO_COLOR
+		atten.r = saturate(atten.r - abs(TargetColor0.x - col.x) - abs(TargetColor0.y - col.y) - abs(TargetColor0.z - col.z));
+#endif
 		result += lut * atten.r;
 
 
@@ -142,6 +161,9 @@ Shader "Hidden/MCG_PostProcess"
 #ifdef LUT_ONE_LUMA
 		atten.g = saturate(atten.g - luma * LUMA_Sensitivity1);
 #endif
+#ifdef LUT_ONE_COLOR
+		atten.g = saturate(atten.g - abs(TargetColor1.x - col.x) - abs(TargetColor1.y - col.y) - abs(TargetColor1.z - col.z));
+#endif
 		result += lut * atten.g * fade;
 		fade *= (1 - atten.g);
 #endif
@@ -150,6 +172,9 @@ Shader "Hidden/MCG_PostProcess"
 #ifdef LUT_TWO_LUMA
 		atten.b = saturate(atten.b - luma * LUMA_Sensitivity2);
 #endif
+#ifdef LUT_TWO_COLOR
+		atten.b = saturate(atten.b - abs(TargetColor2.x - col.x) - abs(TargetColor2.y - col.y) - abs(TargetColor2.z - col.z));
+#endif
 		result += lut * atten.b * fade;
 		fade *= (1 - atten.b);
 #endif
@@ -157,6 +182,9 @@ Shader "Hidden/MCG_PostProcess"
 		lut = lerp(col.rgba, tex3D(_LUT3D3, col.rgb * _LUT_Scale3 + _LUT_Offset3), _LUT_Strength3) * OverrideSecondaryLCGs;
 #ifdef LUT_THREE_LUMA
 		atten.a = saturate(atten.a - luma * LUMA_Sensitivity3);
+#endif
+#ifdef LUT_THREE_COLOR
+		atten.a = saturate(atten.a - abs(TargetColor3.x - col.x) - abs(TargetColor3.y - col.y) - abs(TargetColor3.z - col.z));
 #endif
 		result += lut * atten.a * fade;
 		fade *= (1 - atten.a);
@@ -167,6 +195,9 @@ Shader "Hidden/MCG_PostProcess"
 #ifdef LUT_FOUR_LUMA
 		atten.r = saturate(atten.r - luma * LUMA_Sensitivity4);
 #endif
+#ifdef LUT_FOUR_COLOR
+		atten.r = saturate(atten.r - abs(TargetColor4.x - col.x) - abs(TargetColor4.y - col.y) - abs(TargetColor4.z - col.z));
+#endif
 		result += lut * atten.r * fade;
 		fade *= (1 - atten.r);
 #endif
@@ -174,6 +205,9 @@ Shader "Hidden/MCG_PostProcess"
 		lut = lerp(col.rgba, tex3D(_LUT3D5, col.rgb * _LUT_Scale5 + _LUT_Offset5), _LUT_Strength5) * OverrideSecondaryLCGs;
 #ifdef LUT_FIVE_LUMA
 		atten.g = saturate(atten.g - luma * LUMA_Sensitivity5);
+#endif
+#ifdef LUT_FIVE_COLOR
+		atten.g = saturate(atten.g - abs(TargetColor5.x - col.x) - abs(TargetColor5.y - col.y) - abs(TargetColor5.z - col.z));
 #endif
 		result += lut * atten.g * fade;
 		fade *= (1 - atten.g);
@@ -183,6 +217,9 @@ Shader "Hidden/MCG_PostProcess"
 #ifdef LUT_SIX_LUMA
 		atten.b = saturate(atten.b - luma * LUMA_Sensitivity6);
 #endif
+#ifdef LUT_SIX_COLOR
+		atten.b = saturate(atten.b - abs(TargetColor6.x - col.x) - abs(TargetColor6.y - col.y) - abs(TargetColor6.z - col.z));
+#endif
 		result += lut * atten.b * fade;
 		fade *= (1 - atten.b);
 #endif
@@ -190,6 +227,9 @@ Shader "Hidden/MCG_PostProcess"
 		lut = lerp(col.rgba, tex3D(_LUT3D7, col.rgb * _LUT_Scale7 + _LUT_Offset7), _LUT_Strength7) * OverrideSecondaryLCGs;
 #ifdef LUT_SEVEN_LUMA
 		atten.a = saturate(atten.a - luma * LUMA_Sensitivity7);
+#endif
+#ifdef LUT_SEVEN_COLOR
+		atten.a = saturate(atten.a - abs(TargetColor7.x - col.x) - abs(TargetColor7.y - col.y) - abs(TargetColor7.z - col.z));
 #endif
 		result += lut * atten.a * fade;
 #endif

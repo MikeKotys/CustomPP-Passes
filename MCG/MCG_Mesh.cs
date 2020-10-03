@@ -11,6 +11,9 @@ namespace MCGPostEffect
 	[RequireComponent(typeof(MeshFilter), typeof(MeshRenderer))]
 	public sealed class MCG_Mesh : MonoBehaviour
 	{
+		[Header("Only the RED channel of the", order = 0)]
+		[Header("texture will apply", order = 1)]
+
 		[Tooltip("Higher priority LCG lights will trump lower priority lights with their LUTs" +
 			" (HighPriorityLut*HighPriorityAttenuation\n+ LowPriorityLut*LowPriorityAttenuation\n*(1-HighPriorityAttenuation))." +
 			"\nLights with the same Priority numbers would share the same LUT texture used even if you try to set different ones.")]
@@ -39,13 +42,19 @@ namespace MCGPostEffect
 		public Texture3D OldLUT3D;
 #endif
 
-		[Tooltip("If checked, the overall luminocity of the final picture will be substracted" +
+		[Tooltip("If checked, the overall luminosity of the final picture will be subtracted" +
 			" or added to the base value of this LCG.")]
 		public bool SubtractLuminosity = false;
 
-		[Tooltip("How much luminocity of the final picture should be substracted or added to" +
-			" the base value of this LCG (to add set this to a negative value.")]
-		public float LuminositySencitivity = 1;
+		[Tooltip("If checked, the selected target color will be used to attenuate the strength of this LUT.")]
+		public bool UseTargetColor = false;
+
+		[Tooltip("The target color that will be used to attenuate the strength of this LUT.")]
+		public Color TargetColor;
+
+		[Tooltip("How much luminosity of the final picture should be subtracted or added to" +
+		         " the base value of this LCG (to add set this to a negative value.")]
+		public float LuminositySensitivity = 1;
 
 		[NonSerialized][HideInInspector]
 		public bool IsVisible = false;
@@ -168,7 +177,8 @@ namespace MCGPostEffect
 			mcgPPMat.SetFloat("_LUT_Scale" + postEffect.CurrentLUTNum, (lutSize - 1) / (1.0f * lutSize));
 			mcgPPMat.SetFloat("_LUT_Offset" + postEffect.CurrentLUTNum, 1.0f / (2.0f * lutSize));
 			mcgPPMat.SetFloat("_LUT_Strength" + postEffect.CurrentLUTNum, LUTStrength);
-			mcgPPMat.SetFloat("LUMA_Sensitivity" + postEffect.CurrentLUTNum, LuminositySencitivity);
+			mcgPPMat.SetFloat("LUMA_Sensitivity" + postEffect.CurrentLUTNum, LuminositySensitivity);
+			mcgPPMat.SetColor("TargetColor" + postEffect.CurrentLUTNum, TargetColor);
 		}//#endcolreg
 
 #if UNITY_EDITOR
