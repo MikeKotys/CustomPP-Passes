@@ -115,7 +115,7 @@ namespace MCGPostEffect
 					if (lastPriority == priority && CurrentLUTNum > 0)
 						CurrentLUTNum--;
 
-					lcgMesh.RenderMesh(this, cmd, MCGPPMat);
+					lcgMesh.RenderMesh(this, cmd, MCGPPMat);    //#color(purple);
 
 					if (isSubtractingLuma)
 					{

@@ -13,25 +13,6 @@ Shader "Hidden/CopyColorAndDepth"
 	TEXTURE2D_X(_FadeWallBuffer);
 	TEXTURE2D_X(_DepthBuffer);
 
-    #define v2 1.41421
-    #define c45 0.707107
-    #define c225 0.9238795
-    #define s225 0.3826834
-
-    #define MAXSAMPLES 8
-    // Neighbour pixel positions
-    static float2 samplingPositions[MAXSAMPLES] =
-    {
-        float2( 1,  1),
-        float2( 0,  1),
-        float2(-1,  1),
-        float2(-1,  0),
-        float2(-1, -1),
-        float2( 0, -1),
-        float2( 1, -1),
-        float2( 1, 0),
-    };
-
 	float _Opacity;
 	float _YThreshold = 0.35f;
 	float4 _FillColor;
@@ -75,17 +56,16 @@ Shader "Hidden/CopyColorAndDepth"
 
             ZWrite On
             ZTest LEqual
-			//Blend One Zero
 			Blend SrcAlpha OneMinusSrcAlpha
             Cull Off
 
-			Stencil
-			{
-				WriteMask 6
-				Ref 0
-				Comp Always
-				Pass Replace
-			}
+			//Stencil
+			//{
+			//	WriteMask 6
+			//	Ref 0
+			//	Comp Always
+			//	Pass Replace
+			//}
 
             HLSLPROGRAM
                 #pragma fragment FullScreenPass

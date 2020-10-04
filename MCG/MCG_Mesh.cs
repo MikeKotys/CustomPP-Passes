@@ -80,19 +80,20 @@ namespace MCGPostEffect
 			var filter = GetComponent<MeshFilter>();
 			MainMesh = filter.sharedMesh;
 
-			var shader = Shader.Find("MCG/Unlit");
+			var shader = Shader.Find("Hidden/MCGUnlit");
 
 			if (!shader)
-				Debug.LogError("Couldn't find the 'MCG/Unlit' Shader!", gameObject);
+				Debug.LogError("Couldn't find the 'Hidden/MCGUnlit' Shader!", gameObject);
 			else
 			{
 				MainMat = new Material(shader);
 				MainMat.hideFlags = HideFlags.HideAndDontSave;
 				MainMat.SetColor("OutputColor", Color.white);
 				MainMat.SetTexture("_MainTex", MeshTexture);
+				MainPass = MainMat.FindPass("ForwardOnly");
 			}
+
 			LCGSystem.Instance.AddMesh(this);
-			MainPass = MainMat.FindPass("ForwardOnly");
 
 			if (IsVisible)
 				OnBecameVisible();
@@ -243,3 +244,8 @@ namespace MCGPostEffect
 		}
 	}
 }
+
+
+// Changing TargetColor or LuminocitySensitivity on one MCG_Mesh component must change it on every other component
+//	with the same Priority.
+// Remove LCG.cs completely.

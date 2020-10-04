@@ -231,8 +231,16 @@ namespace FadeableWall
 						yield return null;
 					else
 					{
-						bool isFadingOut = !IsDeactivated || CollisionCount > 0;
+						bool isFadingOut = CollisionCount > 0;
 
+						// Make sure we simply fade IN the models if the component IsDeactivated.
+						if (IsDeactivated)
+						{
+							isFadingOut = false;
+							InitiallyRequestedFadeOut = false;
+						}
+
+						// The fading request might have changed while this coroutine was working.
 						if (isFadingOut != InitiallyRequestedFadeOut)
 							break;
 						else
@@ -285,7 +293,13 @@ namespace FadeableWall
 						else
 							FadeWall.Instance.ReleaseMonopolisticControlFW(this);
 
-						if (!IsDeactivated || CollisionCount > 0)
+						if (IsDeactivated || CollisionCount == 0)
+						{
+							// Fully faded IN.
+							for (int i = 0; i < AllFadableRenderers.Count; i++)
+								AllFadableRenderers[i].gameObject.layer = OriginalLayer;
+						}
+						else if(CollisionCount > 0)
 						{
 							// Fully faded OUT.
 							for (int i = 0; i < AllFadableRenderers.Count; i++)
@@ -295,12 +309,6 @@ namespace FadeableWall
 								else
 									AllFadableRenderers[i].enabled = false;
 							}
-						}
-						else
-						{
-							// Fully faded IN.
-							for (int i = 0; i < AllFadableRenderers.Count; i++)
-								AllFadableRenderers[i].gameObject.layer = OriginalLayer;
 						}
 
 						break;

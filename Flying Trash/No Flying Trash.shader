@@ -1,8 +1,7 @@
-Shader "Hidden/MCGUnlit"
+Shader "Hidden/NoFlyingTrash"
 {
     Properties
     {
-        _UnlitColor("Color", Color) = (1,1,1,1)
         _UnlitColorMap("ColorMap", 2D) = "white" {}
     }
 
@@ -26,9 +25,9 @@ Shader "Hidden/MCGUnlit"
             Name "ForwardOnly"
             Tags { "LightMode" = "ForwardOnly" }
 
-			Blend One One
-			BlendOp Max
-			ZWrite Off
+			Blend One Zero
+			BlendOp Add
+			ZWrite On
 			Cull Front
 			ZTest Off
 
@@ -45,11 +44,6 @@ Shader "Hidden/MCGUnlit"
             #include "Packages/com.unity.render-pipelines.high-definition/Runtime/Material/Unlit/ShaderPass/UnlitSharePass.hlsl"
 			#include "Packages/com.unity.render-pipelines.high-definition/Runtime/RenderPipeline/ShaderPass/VertMesh.hlsl"
 
-			float AttenuationMultiplier;
-
-			float4 ColorMask0;
-			float4 ColorMask1;
-
 			PackedVaryingsType Vert(AttributesMesh inputMesh)
 			{
 				VaryingsType varyingsType;
@@ -57,20 +51,22 @@ Shader "Hidden/MCGUnlit"
 				return PackVaryingsType(varyingsType);
 			}
 
-			void Frag(PackedVaryingsToPS packedInput, out float4 color0 : SV_Target0, out float4 color1 : SV_Target1)
+			void Frag(PackedVaryingsToPS packedInput, out float4 Color : SV_Target, out float Depth : SV_Depth)
 			{
 				UNITY_SETUP_STEREO_EYE_INDEX_POST_VERTEX(packedInput);
 				FragInputs input = UnpackVaryingsMeshToFragInputs(packedInput.vmesh);
 
 				// input.positionSS is SV_Position
-				PositionInputs posInput = GetPositionInput(input.positionSS.xy, _ScreenSize.zw, input.positionSS.z, input.positionSS.w, input.positionRWS);
+				PositionInputs posInput = GetPositionInput(input.positionSS.xy, _ScreenSize.zw,
+					input.positionSS.z, input.positionSS.w, input.positionRWS);
 
 				float2 unlitColorMapUv = TRANSFORM_TEX(input.texCoord0.xy, _UnlitColorMap);
-				color0 = SAMPLE_TEXTURE2D(_UnlitColorMap, sampler_UnlitColorMap, unlitColorMapUv).r * _UnlitColor;
+				float alpha = SAMPLE_TEXTURE2D(_UnlitColorMap, sampler_UnlitColorMap, unlitColorMapUv).a;
 
-				color0 = min(1, color0 * AttenuationMultiplier);
-				color1 = color0 * ColorMask1;
-				color0 = color0 * ColorMask0;
+				//clip(alpha - 0.01f);
+
+				Color = float4(0, 0, 0, 0);
+				Depth = 0;
 			}
 
             #pragma vertex Vert

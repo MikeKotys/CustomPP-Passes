@@ -254,7 +254,6 @@ namespace FadeableWall
 		{//#colreg(darkpurple);
 
 			// 1. Render models in the process of fading away with the 'Fade Wall' effect.
-
 			var stateBlock = new RenderStateBlock(RenderStateMask.Depth)
 			{
 				depthState = new DepthState(writeEnabled: true, compareFunction: CompareFunction.LessEqual),
@@ -287,7 +286,7 @@ namespace FadeableWall
 			ShaderProperties.SetTexture("_DepthBuffer", DepthBuffer);
 			CoreUtils.DrawFullScreen(cmd, CopyMatNorm, ShaderProperties, shaderPassId: 0);
 
-			
+
 			// 2. Render models with the 'Show Edges' effect that are have faded away.
 			RenderShowEdges(renderContext, cmd, hdCamera, cullingResult, ShowEdgesFrozenLayer, 0);
 			// 3. Render models in the process of fading away with the 'Show Edges' effect.
@@ -444,3 +443,6 @@ namespace FadeableWall
 #endif
 	}
 }
+
+//%%% During a fading phase, make a list that accumulates ALL the new meshes that request to
+//	be faded and fade them all once the current fading phase ends.
