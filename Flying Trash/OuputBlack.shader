@@ -1,4 +1,4 @@
-Shader "Hidden/OuputWhite"
+Shader "Hidden/OuputBlack"
 {
     HLSLINCLUDE
 
@@ -10,10 +10,9 @@ Shader "Hidden/OuputWhite"
 
     #include "Packages/com.unity.render-pipelines.high-definition/Runtime/RenderPipeline/RenderPass/CustomPass/CustomPassCommon.hlsl"
 
-	void FullScreenPass(Varyings varyings, out float4 Color : SV_Target, out float Depth : SV_Depth)
+	void FullScreenPass(Varyings varyings, out float Depth : SV_Depth)
     {
-		Color = float4(1, 1, 1, 1);
-		Depth = 1;
+		Depth = 0;
     }
 
     ENDHLSL
@@ -27,7 +26,7 @@ Shader "Hidden/OuputWhite"
             ZWrite On
             ZTest Always
 			Blend One Zero
-            Cull Off
+            Cull Back
 
             HLSLPROGRAM
                 #pragma fragment FullScreenPass

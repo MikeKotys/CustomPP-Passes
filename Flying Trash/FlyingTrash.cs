@@ -28,7 +28,7 @@ namespace FlyingTrash
 		// To make sure the shader ends up in the build, we keep it's reference in the custom pass
 		[SerializeField, HideInInspector]
 		Shader CopyShader;
-		Material CopyMatNorm;
+		Material CopyMat;
 
 		Material OutputWhiteMat;
 
@@ -52,10 +52,10 @@ namespace FlyingTrash
 				Vector2.one, TextureXR.slices, depthBufferBits: DepthBits.Depth24, dimension: TextureXR.dimension,
 				colorFormat: GraphicsFormat.R16_UInt, useDynamicScale: true, name: "Flying Trash Depth Buffer");
 
-			CopyShader = Shader.Find("Hidden/CopyColorAndDepth");
-			CopyMatNorm = CoreUtils.CreateEngineMaterial(CopyShader);
+			CopyShader = Shader.Find("Hidden/CopyTrashColorAndDepth");
+			CopyMat = CoreUtils.CreateEngineMaterial(CopyShader);
 
-			OutputWhiteShader = Shader.Find("Hidden/OuputWhite");
+			OutputWhiteShader = Shader.Find("Hidden/OuputBlack");
 			OutputWhiteMat = CoreUtils.CreateEngineMaterial(OutputWhiteShader);
 		}//#endcolreg
 
@@ -67,8 +67,8 @@ namespace FlyingTrash
 		}
 
 
-		protected override void Execute(ScriptableRenderContext renderContext, CommandBuffer cmd, HDCamera hdCamera,
-			CullingResults cullingResult)
+		protected override void Execute(ScriptableRenderContext renderContext,
+			CommandBuffer cmd, HDCamera hdCamera, CullingResults cullingResult)
 		{//#colreg(darkpurple);
 
 			// Render blockers - objects that will prevent trash from rendering on top of them.
@@ -99,9 +99,10 @@ namespace FlyingTrash
 			CoreUtils.SetRenderTarget(cmd, ColorBuffer, DepthBuffer, ClearFlag.None, clearColor: new Color(0, 0, 0, 0));
 			HDUtils.DrawRendererList(renderContext, cmd, RendererList.Create(filteredMeshes));
 
-			ShaderProperties.SetTexture("_FadeWallBuffer", ColorBuffer);
+			ShaderProperties.SetTexture("_ColorBuffer", ColorBuffer);
+			ShaderProperties.SetTexture("_DepthBuffer", DepthBuffer);
 			SetCameraRenderTarget(cmd);
-			CoreUtils.DrawFullScreen(cmd, CopyMatNorm, ShaderProperties, shaderPassId: 0);
+			CoreUtils.DrawFullScreen(cmd, CopyMat, ShaderProperties, shaderPassId: 0);
 			CoreUtils.SetRenderTarget(cmd, ColorBuffer, DepthBuffer, ClearFlag.All, clearColor: new Color(0, 0, 0, 0));
 		}//#endcolreg
 

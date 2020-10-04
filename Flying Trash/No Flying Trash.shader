@@ -51,7 +51,7 @@ Shader "Hidden/NoFlyingTrash"
 				return PackVaryingsType(varyingsType);
 			}
 
-			void Frag(PackedVaryingsToPS packedInput, out float4 Color : SV_Target, out float Depth : SV_Depth)
+			void Frag(PackedVaryingsToPS packedInput, out float Depth : SV_Depth)
 			{
 				UNITY_SETUP_STEREO_EYE_INDEX_POST_VERTEX(packedInput);
 				FragInputs input = UnpackVaryingsMeshToFragInputs(packedInput.vmesh);
@@ -63,10 +63,7 @@ Shader "Hidden/NoFlyingTrash"
 				float2 unlitColorMapUv = TRANSFORM_TEX(input.texCoord0.xy, _UnlitColorMap);
 				float alpha = SAMPLE_TEXTURE2D(_UnlitColorMap, sampler_UnlitColorMap, unlitColorMapUv).a;
 
-				//clip(alpha - 0.01f);
-
-				Color = float4(0, 0, 0, 0);
-				Depth = 0;
+				Depth = 1;
 			}
 
             #pragma vertex Vert
