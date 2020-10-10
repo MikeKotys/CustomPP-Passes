@@ -3,6 +3,7 @@ using UnityEngine;
 using UnityEngine.Rendering;
 using System.Collections;
 using System.Linq;
+using System;
 #if UNITY_EDITOR
 using UnityEditor;
 #endif
@@ -26,20 +27,21 @@ namespace FadeableWall
 		[Tooltip("All renderers eligable to be faded.")]
 		public List<Renderer> AllFadableRenderers;
 
+		/// <summary>Which layer should the model be on</summary>
+		public List<int> OriginalLayers;
+
 		/// <summary>How many trigger colliders collided with the camera collider.</summary>
 		int CollisionCount = 0;
-
-		/// <summary>Which layer should the model be on</summary>
-		int OriginalLayer = 0;
 
 		/// <summary>In deactivated mode the <see cref="Fadable"/> will simply fade in the model
 		/// and stop performing its functions.</summary>
 		bool IsDeactivated = false;
 
+		[HideInInspector, NonSerialized]
+		public bool IsFadingOut = true;
+
 		void Awake()
 		{//#colreg(darkorange);
-			OriginalLayer = gameObject.layer;
-
 			// First - save all renderers we have.
 			if (AllFadableRenderers.Any())
 			{
@@ -52,11 +54,7 @@ namespace FadeableWall
 
 			}
 			else
-			{
-				List<Renderer> renderers = new List<Renderer>();
-				RecursiveSetupRenderers(renderers, transform);
-				AllFadableRenderers = renderers;
-			}
+				RecursiveSetupRenderers(AllFadableRenderers, OriginalLayers, transform);
 
 			// Now clone all the GameObjects with renderers and set their shadowCastingMode to ShadowsOnly.
 			//	Parent each clone to the GameObject that was cloned.
@@ -72,7 +70,7 @@ namespace FadeableWall
 					go.transform.localPosition = Vector3.zero;
 					go.transform.localRotation = Quaternion.identity;
 					go.transform.localScale = Vector3.one;
-					go.layer = OriginalLayer;
+					go.layer = OriginalLayers[i];
 
 					var filter = renderer.GetComponent<MeshFilter>();
 					var newFilter = go.AddComponent<MeshFilter>();
@@ -141,14 +139,17 @@ namespace FadeableWall
 				RecursiveSetUpTriggers(current.GetChild(i));
 		}//#endcolreg
 
-		void RecursiveSetupRenderers(List<Renderer> renderers, Transform current)
+		void RecursiveSetupRenderers(List<Renderer> renderers, List<int> origLayers, Transform current)
 		{//#colreg(black);
 			var renderer = current.GetComponent<Renderer>();
 			if (renderer != null && current.gameObject.activeSelf)
+			{
 				renderers.Add(renderer);
+				origLayers.Add(renderer.gameObject.layer);
+			}
 
 			for (int i = 0; i < current.childCount; i++)
-				RecursiveSetupRenderers(renderers, current.GetChild(i));
+				RecursiveSetupRenderers(renderers, origLayers, current.GetChild(i));
 		}//#endcolreg
 
 		bool InitiallyRequestedFadeOut = false;
@@ -161,7 +162,7 @@ namespace FadeableWall
 			//ActivatedTriggers.Add(trigger);
 			if (CollisionCount == 1)
 			{
-				if (!IsInQueue && !IsChangingOpacity)
+				if (!IsInQueue)
 				{
 					InitiallyRequestedFadeOut = true;
 					if (!IsDeactivated)
@@ -169,6 +170,7 @@ namespace FadeableWall
 				}
 			}
 		}//#endcolreg
+
 
 		public void DecreaseCollision(/*FadeWallTrigger trigger*/)
 		{//#colreg(darkred);
@@ -179,7 +181,7 @@ namespace FadeableWall
 			{
 				CollisionCount = 0;
 
-				if (!IsInQueue && !IsChangingOpacity)
+				if (!IsInQueue)
 				{
 					InitiallyRequestedFadeOut = false;
 					if (!IsDeactivated)
@@ -211,6 +213,24 @@ namespace FadeableWall
 				IsDeactivated = false;
 		}//#endcolreg
 
+		public void ToggleAllRenderers(bool enable)
+		{//#colreg(darkred);
+			for (int i = 0; i < AllFadableRenderers.Count; i++)
+				AllFadableRenderers[i].enabled = enable;
+		}//#endcolreg
+
+
+		public void SetLayer(int newLayer)
+		{//#colreg(darkred);
+			for (int i = 0; i < AllFadableRenderers.Count; i++)
+			{
+				if (newLayer == -1)
+					AllFadableRenderers[i].gameObject.layer = OriginalLayers[i];
+				else
+					AllFadableRenderers[i].gameObject.layer = newLayer;
+			}
+		}//#endcolreg
+
 
 		/// <summary>Prevent multiple <see cref="QueueForFadeWall"/> coroutines running at the same time.</summary>
 		bool IsInQueue = false;
@@ -223,101 +243,24 @@ namespace FadeableWall
 			while (true)
 			{
 				if (FadeWall.Instance == null)
-					break;
+					yield return null;
 				else
 				{
-					if ((ShowWallEdges && FadeWall.Instance.IsBusySE)
-						|| (!ShowWallEdges && FadeWall.Instance.IsBusyFW))
-						yield return null;
-					else
+					IsFadingOut = CollisionCount > 0;
+
+					// Make sure we simply fade IN the models if the component IsDeactivated.
+					if (IsDeactivated)
 					{
-						bool isFadingOut = CollisionCount > 0;
-
-						// Make sure we simply fade IN the models if the component IsDeactivated.
-						if (IsDeactivated)
-						{
-							isFadingOut = false;
-							InitiallyRequestedFadeOut = false;
-						}
-
-						// The fading request might have changed while this coroutine was working.
-						if (isFadingOut != InitiallyRequestedFadeOut)
-							break;
-						else
-						{
-							if (ShowWallEdges)
-								FadeWall.Instance.GainMonopolisticControlSE(this, isFadingOut ? 1 : 0);
-							else
-								FadeWall.Instance.GainMonopolisticControlFW(this, isFadingOut ? 1 : 0);
-
-							for (int i = 0; i < AllFadableRenderers.Count; i++)
-							{
-								if (ShowWallEdges)
-									AllFadableRenderers[i].gameObject.layer = FadeWall.Instance.ShowEdgesLayer;
-								else
-								{
-									AllFadableRenderers[i].enabled = true;
-									AllFadableRenderers[i].gameObject.layer = FadeWall.Instance.FadeWallLayer;
-								}
-							}
-
-							if (!IsChangingOpacity)
-								StartCoroutine(GradualyChangeOpacity());
-						}
-						break;
+						IsFadingOut = false;
+						InitiallyRequestedFadeOut = false;
 					}
+
+					FadeWall.Instance.AddFadable(this);
+					break;
 				}
 			}
 
 			IsInQueue = false;
-		}//#endcolreg
-
-		/// <summary>Prevent multiple <see cref="GradualyChangeOpacity"/> coroutines running at the same time.</summary>
-		bool IsChangingOpacity = false;
-
-		/// <summary>Slowly change the opacity to fade in/out the models.</summary>
-		IEnumerator GradualyChangeOpacity()
-		{//#colreg(blue*1.5);
-			IsChangingOpacity = true;
-			while (true)
-			{
-				if (FadeWall.Instance == null)
-					break;
-				else
-				{
-					if ((ShowWallEdges && FadeWall.Instance.ChangeOpacitySE(IsDeactivated || CollisionCount == 0))
-						|| (!ShowWallEdges && FadeWall.Instance.ChangeOpacityFW(IsDeactivated || CollisionCount == 0)))
-					{
-						if (ShowWallEdges)
-							FadeWall.Instance.ReleaseMonopolisticControlSE(this);
-						else
-							FadeWall.Instance.ReleaseMonopolisticControlFW(this);
-
-						if (IsDeactivated || CollisionCount == 0)
-						{
-							// Fully faded IN.
-							for (int i = 0; i < AllFadableRenderers.Count; i++)
-								AllFadableRenderers[i].gameObject.layer = OriginalLayer;
-						}
-						else if(CollisionCount > 0)
-						{
-							// Fully faded OUT.
-							for (int i = 0; i < AllFadableRenderers.Count; i++)
-							{
-								if (ShowWallEdges)
-									AllFadableRenderers[i].gameObject.layer = FadeWall.Instance.ShowEdgesFrozenLayer;
-								else
-									AllFadableRenderers[i].enabled = false;
-							}
-						}
-
-						break;
-					}
-				}
-
-				yield return null;
-			}
-			IsChangingOpacity = false;
 		}//#endcolreg
 	}
 

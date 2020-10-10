@@ -23,14 +23,8 @@ namespace FlyingTrash
 
 		// To make sure the shader ends up in the build, we keep it's reference in the custom pass
 		[SerializeField, HideInInspector]
-		Shader OutputWhiteShader;
-
-		// To make sure the shader ends up in the build, we keep it's reference in the custom pass
-		[SerializeField, HideInInspector]
 		Shader CopyShader;
 		Material CopyMat;
-
-		Material OutputWhiteMat;
 
 		protected override void Setup(ScriptableRenderContext renderContext, CommandBuffer cmd)
 		{//#colreg(darkorange);
@@ -54,9 +48,6 @@ namespace FlyingTrash
 
 			CopyShader = Shader.Find("Hidden/CopyTrashColorAndDepth");
 			CopyMat = CoreUtils.CreateEngineMaterial(CopyShader);
-
-			OutputWhiteShader = Shader.Find("Hidden/OuputBlack");
-			OutputWhiteMat = CoreUtils.CreateEngineMaterial(OutputWhiteShader);
 		}//#endcolreg
 
 
@@ -70,10 +61,8 @@ namespace FlyingTrash
 		protected override void Execute(ScriptableRenderContext renderContext,
 			CommandBuffer cmd, HDCamera hdCamera, CullingResults cullingResult)
 		{//#colreg(darkpurple);
-
 			// Render blockers - objects that will prevent trash from rendering on top of them.
-			CoreUtils.SetRenderTarget(cmd, DepthBuffer, DepthBuffer, ClearFlag.None);
-			CoreUtils.DrawFullScreen(cmd, OutputWhiteMat, null, shaderPassId: 0);
+			CoreUtils.SetRenderTarget(cmd, DepthBuffer, DepthBuffer, ClearFlag.All);
 
 			foreach (var mesh in FlyingTrashSystem.AllMeshes)
 				mesh.RenderMesh(cmd);   //#color(purple);
@@ -103,7 +92,6 @@ namespace FlyingTrash
 			ShaderProperties.SetTexture("_DepthBuffer", DepthBuffer);
 			SetCameraRenderTarget(cmd);
 			CoreUtils.DrawFullScreen(cmd, CopyMat, ShaderProperties, shaderPassId: 0);
-			CoreUtils.SetRenderTarget(cmd, ColorBuffer, DepthBuffer, ClearFlag.All, clearColor: new Color(0, 0, 0, 0));
 		}//#endcolreg
 
 

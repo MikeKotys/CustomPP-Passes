@@ -5,6 +5,7 @@ using UnityEngine.Experimental.Rendering;
 using UnityEngine.SceneManagement;
 using System;
 using System.Collections;
+using System.Collections.Generic;
 #if UNITY_EDITOR
 using UnityEditor;
 #endif
@@ -17,7 +18,7 @@ namespace FadeableWall
 	/// 3. Drawing 'Show Edges' models that have faded out completely and are currenty semi-transparent (SEFrozen Layer).
 	/// A <see cref="Fadable"/> class can controll one of the first 2 processes in a monopolistic way (untill models fade
 	/// in/out completely).</summary>
-	public class FadeWall : CustomPass
+	public sealed class FadeWall : CustomPass
 	{
 		/// <summary>Singleton.</summary>
 		public static FadeWall Instance;
@@ -26,15 +27,11 @@ namespace FadeableWall
 		[Layer, Tooltip("The layer of the models that are currently fading away without showing their edges.")]
 #endif
 		public int FadeWallLayer = 0;
-		[NonSerialized, HideInInspector]
-		public float FadeWallOpacity = 1;
 
 #if UNITY_EDITOR
 		[Layer, Tooltip("The layer of the models that are currently fading away WITH showing their edges.")]
 #endif
 		public int ShowEdgesLayer = 0;
-		[NonSerialized, HideInInspector]
-		public float ShowEdgesOpacity = 1;
 #if UNITY_EDITOR
 		[Layer, Tooltip("Buildings that should be shown with the 'Show Edges' effect will be set to this layer" +
 			" when fully faded.")]
@@ -82,27 +79,34 @@ namespace FadeableWall
 		/// and to be able to analyze depth for the 'Show Edges' effect.</summary>
 		RTHandle DepthBuffer;
 
-		/// <summary>Indicates that a <see cref="Fadable"/> class has taken the monopolistic
-		/// control of the 'Fade Wall' functionality of this custom pass.</summary>
-		[HideInInspector]
-		public bool IsBusyFW => IsBusyFWPrivate;
-		protected bool IsBusyFWPrivate = false;
-		Fadable OwnerFW;
-
-		/// <summary>Indicates that a <see cref="Fadable"/> class has taken the monopolistic
-		/// control of the 'Show Edges' functionality of this custom pass.</summary>
-		[HideInInspector]
-		public bool IsBusySE => IsBusySEPrivate;
-		protected bool IsBusySEPrivate = false;
-		Fadable OwnerSE;
-
-
 		/// <summary>A horizontal line in screen space that separates the fadable part of the colors and the
 		/// constant alpha == 1 part.</summary>
 		public float YThreshold = 0.35f;
 
+		private float OpacityFW;
+		private float OpacitySE;
+
+		bool IsFadingFW;
+		bool IsFadingSE;
+
+
+		/// <summary>The fadables that need to be faded are accumulated here before they are faded by this class.</summary>
+		HashSet<Fadable> QueuedFadables;
+
+		List<Fadable> CurrentFadeWall;
+		List<Fadable> CurrentShowEdges;
+
+		private bool FadableListHasFadeWall;
+		private bool FadeWallIsFadingOUT;
+		private bool FadableListHasShowEdges;
+		private bool ShowEdgesIsFadingOUT;
+
 		protected override void Setup(ScriptableRenderContext renderContext, CommandBuffer cmd)
 		{//#colreg(darkorange);
+			QueuedFadables = new HashSet<Fadable>();
+			CurrentFadeWall = new List<Fadable>();
+			CurrentShowEdges = new List<Fadable>();
+
 #if UNITY_EDITOR
 			if (!HideWarnings && Instance != this && Instance != null)
 				Debug.LogError("More than 1 instance of the '" + nameof(FadeWall) + "' custom pass in the scene!");
@@ -159,6 +163,59 @@ namespace FadeableWall
 				LayerMask.LayerToName(ShowEdgesLayer), LayerMask.LayerToName(ShowEdgesFrozenLayer));
 		}
 
+		public void AddFadable(Fadable fadable)
+		{//#colreg(darkred);
+			QueuedFadables.Add(fadable);
+
+			if (fadable.ShowWallEdges)
+				FadableListHasShowEdges = true;
+			else
+				FadableListHasFadeWall = true;
+		}//#endcolreg
+
+
+		private void StartCycleFadeWall()
+		{//#colreg(black);
+			FadeWallIsFadingOUT = !FadeWallIsFadingOUT;
+
+			CurrentFadeWall.Clear();
+
+			foreach (var fadable in QueuedFadables)
+			{
+				if (!fadable.ShowWallEdges && fadable.IsFadingOut == FadeWallIsFadingOUT)
+				{
+					CurrentFadeWall.Add(fadable);
+
+					if (!FadeWallIsFadingOUT)
+						fadable.ToggleAllRenderers(true);
+					else
+						fadable.SetLayer(FadeWallLayer);
+				}
+			}
+
+			if (CurrentFadeWall.Count > 0)
+				IsFadingFW = true;
+		}//#endcolreg
+
+
+		private void StartCycleShowEdges()
+		{//#colreg(black);
+			ShowEdgesIsFadingOUT = !ShowEdgesIsFadingOUT;
+
+			CurrentShowEdges.Clear();
+
+			foreach (var fadable in QueuedFadables)
+			{
+				if (fadable.ShowWallEdges && fadable.IsFadingOut == ShowEdgesIsFadingOUT)
+				{
+					CurrentShowEdges.Add(fadable);
+					fadable.SetLayer(ShowEdgesLayer);
+				}
+			}
+
+			if (CurrentShowEdges.Count > 0)
+				IsFadingSE = true;
+		}//#endcolreg
 
 
 
@@ -248,10 +305,23 @@ namespace FadeableWall
 
 
 
-
 		protected override void Execute(ScriptableRenderContext renderContext, CommandBuffer cmd, HDCamera hdCamera,
 			CullingResults cullingResult)
 		{//#colreg(darkpurple);
+			if (QueuedFadables != null && QueuedFadables.Count > 0)
+			{
+				if (!IsFadingFW && FadableListHasFadeWall)
+					StartCycleFadeWall();
+
+				//if (!IsFadingSE && FadableListHasShowEdges)
+				//	StartCycleShowEdges();
+			}
+
+			if (IsFadingFW)
+				ChangeOpacityFW();
+
+			//if (IsFadingSE)
+			//	ChangeOpacitySE();
 
 			// 1. Render models in the process of fading away with the 'Fade Wall' effect.
 			var stateBlock = new RenderStateBlock(RenderStateMask.Depth)
@@ -281,7 +351,7 @@ namespace FadeableWall
 			SetCameraRenderTarget(cmd);
 
 			ShaderProperties.Clear();
-			ShaderProperties.SetFloat("_Opacity", FadeWallOpacity);
+			ShaderProperties.SetFloat("_Opacity", OpacityFW);
 			ShaderProperties.SetTexture("_FadeWallBuffer", FadeWallBuffer);
 			ShaderProperties.SetTexture("_DepthBuffer", DepthBuffer);
 			CoreUtils.DrawFullScreen(cmd, CopyMatNorm, ShaderProperties, shaderPassId: 0);
@@ -290,122 +360,120 @@ namespace FadeableWall
 			// 2. Render models with the 'Show Edges' effect that are have faded away.
 			RenderShowEdges(renderContext, cmd, hdCamera, cullingResult, ShowEdgesFrozenLayer, 0);
 			// 3. Render models in the process of fading away with the 'Show Edges' effect.
-			RenderShowEdges(renderContext, cmd, hdCamera, cullingResult, ShowEdgesLayer, ShowEdgesOpacity);
+			RenderShowEdges(renderContext, cmd, hdCamera, cullingResult, ShowEdgesLayer, OpacitySE);
 		}//#endcolreg
 
-		/// <summary>Secure the control of the 'Show Edges' functionality of this custom pass.</summary>
-		public void GainMonopolisticControlSE(Fadable owner, float startingOpacity)
-		{//#colreg(black);
-			if (!IsBusySEPrivate)
+
+		void RemoveFadable(Fadable fadable)
+		{
+			QueuedFadables.Remove(fadable);
+		}
+
+		void CheckParticipants()
+		{
+			FadableListHasShowEdges = false;
+			FadableListHasFadeWall = false;
+
+			foreach (var fadable in QueuedFadables)
 			{
-				IsBusySEPrivate = true;
+				if (fadable.ShowWallEdges)
+					FadableListHasShowEdges = true;
+				else
+					FadableListHasFadeWall = true;
 
-				OwnerSE = owner;
-
-				ShowEdgesOpacity = startingOpacity;
+				if (FadableListHasFadeWall && FadableListHasShowEdges)
+					break;
 			}
-		}//#endcolreg
-
-		/// <summary>Secure the control of the 'Fade Wall' functionality of this custom pass.</summary>
-		public void GainMonopolisticControlFW(Fadable owner, float startingOpacity)
-		{//#colreg(black);
-			if (!IsBusyFWPrivate)
-			{
-				IsBusyFWPrivate = true;
-
-				OwnerFW = owner;
-
-				FadeWallOpacity = startingOpacity;
-			}
-		}//#endcolreg
-
-		public void ReleaseMonopolisticControlSE(Fadable owner)
-		{//#colreg(black);
-			if (IsBusySEPrivate && OwnerSE == owner)
-			{
-				OwnerSE = null;
-				IsBusySEPrivate = false;
-			}
-		}//#endcolreg
-
-		public void ReleaseMonopolisticControlFW(Fadable owner)
-		{//#colreg(black);
-			if (IsBusyFWPrivate && OwnerFW == owner)
-			{
-				OwnerFW = null;
-				IsBusyFWPrivate = false;
-			}
-		}//#endcolreg
+		}
 
 
-		/// <summary>Slowly change the opacity of the 'Show Edges' functionality of this custom class.</summary>
-		/// <returns>TRUE if the model is fully faded.</returns>
-		public virtual bool ChangeOpacitySE(bool increase)
+		/// <summary>.</returns>
+		private void ChangeOpacityFW()
 		{//#colreg(darkblue);
-			bool breakRoutine = false;
-
-			if (increase)
+			if (FadeWallIsFadingOUT)
 			{
-				ShowEdgesOpacity += Time.deltaTime * 6;
-
-				if (ShowEdgesOpacity >= 1)
+				OpacityFW -= Time.deltaTime * 1;
+				if (OpacityFW < 0)
 				{
-					ShowEdgesOpacity = 1;
-					breakRoutine = true;
+					OpacityFW = 0;
+					IsFadingFW = false;
+
+					//Fade wall just became INVISIBLE
+					for (int i = 0; i < CurrentFadeWall.Count; i++)
+					{
+						CurrentFadeWall[i].ToggleAllRenderers(false);
+						RemoveFadable(CurrentFadeWall[i]);
+					}
+					CheckParticipants();
 				}
 			}
 			else
 			{
-				ShowEdgesOpacity -= Time.deltaTime * 6;
-
-				if (ShowEdgesOpacity <= 0)
+				OpacityFW += Time.deltaTime * 1;
+				if (OpacityFW > 1)
 				{
-					ShowEdgesOpacity = 0;
-					breakRoutine = true;
+					OpacityFW = 1;
+					IsFadingFW = false;
+
+					//Fade wall just became FULLY VISIBLE
+					for (int i = 0; i < CurrentFadeWall.Count; i++)
+					{
+						CurrentFadeWall[i].SetLayer(-1);
+						RemoveFadable(CurrentFadeWall[i]);
+					}
+					CheckParticipants();
 				}
 			}
-
-			return breakRoutine;
 		}//#endcolreg
 
 
-
-		/// <summary>Slowly change the opacity of the 'Fade Wall' functionality of this custom class.</summary>
-		/// <returns>TRUE if the model is fully faded.</returns>
-		public virtual bool ChangeOpacityFW(bool increase)
+		/// <summary>.</returns>
+		private void ChangeOpacitySE()
 		{//#colreg(darkblue);
-			bool breakRoutine = false;
-
-			if (increase)
+			if (ShowEdgesIsFadingOUT)
 			{
-				FadeWallOpacity += Time.deltaTime * 6;
-
-				if (FadeWallOpacity >= 1)
+				OpacitySE -= Time.deltaTime * 4;
+				if (OpacitySE < 0)
 				{
-					FadeWallOpacity = 1;
-					breakRoutine = true;
+					OpacitySE = 0;
+					IsFadingSE = false;
+
+					//Show edges just became INVISIBLE
+					for (int i = 0; i < CurrentShowEdges.Count; i++)
+					{
+						CurrentShowEdges[i].SetLayer(ShowEdgesFrozenLayer);
+						RemoveFadable(CurrentShowEdges[i]);
+					}
+					CheckParticipants();
 				}
 			}
 			else
 			{
-				FadeWallOpacity -= Time.deltaTime * 6;
-
-				if (FadeWallOpacity <= 0)
+				OpacitySE += Time.deltaTime * 4;
+				if (OpacitySE > 1)
 				{
-					FadeWallOpacity = 0;
-					breakRoutine = true;
+					OpacitySE = 1;
+					IsFadingSE = false;
+
+					//Show edges just became FULLY VISIBLE
+					for (int i = 0; i < CurrentShowEdges.Count; i++)
+					{
+						CurrentShowEdges[i].SetLayer(-1);
+						RemoveFadable(CurrentShowEdges[i]);
+					}
+					CheckParticipants();
 				}
 			}
-
-			return breakRoutine;
 		}//#endcolreg
-
-
 
 
 
 		protected override void Cleanup()
 		{//#colreg(black);
+			QueuedFadables = null;
+			CurrentFadeWall = null;
+			CurrentShowEdges = null;
+
 			if (FadeWallBuffer != null)
 				FadeWallBuffer.Release();
 			if (DepthBuffer != null)
@@ -431,7 +499,7 @@ namespace FadeableWall
 		protected static bool HideWarnings = false;
 
 		/// <summary>Ensure that there are no warnings on play mode stopping</summary>
-		protected virtual void PlayModeStateChanged(PlayModeStateChange change)
+		protected void PlayModeStateChanged(PlayModeStateChange change)
 		{//#colreg(black);
 			if (change == PlayModeStateChange.ExitingPlayMode)
 			{
